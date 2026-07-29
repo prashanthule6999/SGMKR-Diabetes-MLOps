@@ -1,0 +1,32 @@
+
+Dataset
+    │
+    ▼
+Data Ingestion   
+    │
+    ▼
+Data Preprocessing
+    │
+    ▼
+Training
+    │
+    ▼
+(model.pkl) -> model.tar.gz
+    │
+    ▼
+Evaluation
+    │
+    ▼
+evaluatin.json
+    │
+    ▼
+ConditionStep
+    │
+    ▼
+Model Registry
+    │
+    ▼
+Model Pacakge Group
+    │
+    ▼
+PendingManualApproval -> (Approve/Reject)
