@@ -1,0 +1,40 @@
+deployment.py
+        │
+        ▼
+Retrieve Latest Approved Model Package
+        │
+        ▼
+Build desired model name
+(diabetes-model-v5)
+        │
+        ▼
+Is endpoint already serving v5?
+        │
+   Yes ─────────────► Exit
+        │
+       No
+        │
+Does SageMaker Model exist?
+        │
+   ┌────┴────┐
+   │         │
+  Yes       No
+   │         │
+Reuse     Create Model
+   │         │
+   └────┬────┘
+        │
+        ▼
+Generate unique Endpoint Config name
+        │
+        ▼
+Create Endpoint Configuration
+        │
+        ▼
+Create or Update Endpoint
+        │
+        ▼
+Wait until InService
+        │
+        ▼
+Deployment Complete
