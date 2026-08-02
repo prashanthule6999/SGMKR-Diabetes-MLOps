@@ -1,32 +1,48 @@
 
-Dataset
-    │
-    ▼
-Data Ingestion   
-    │
-    ▼
-Data Preprocessing
-    │
-    ▼
-Training
-    │
-    ▼
-(model.pkl) -> model.tar.gz
-    │
-    ▼
-Evaluation
-    │
-    ▼
-evaluatin.json
-    │
-    ▼
-ConditionStep
-    │
-    ▼
-Model Registry
-    │
-    ▼
-Model Pacakge Group
-    │
-    ▼
-PendingManualApproval -> (Approve/Reject)
+                                    S3 Raw Data
+                                        │
+                                        ▼
+                                    Data Ingestion   
+                                        │
+                                        ▼
+                                    Data Preprocessing -> ProcessingStep (preprocessing.py)
+                                        │
+                                        ├── train
+                                        ├── validation
+                                        └── test
+                                        │
+                                        ▼
+                                    Training -> TrainingStep (train.py)
+                                        │
+                                        ├── (model.pkl) -> model.tar.gz
+                                        │
+                                        ▼
+                                    Evaluation -> ProcessingStep (evaluate.py)
+                                        │
+                                        ├── evaluation.json
+                                        │
+                                        ▼
+                                    ConditionStep
+                                        │
+                                        ├── Fail → Pipeline Stops
+                                        │
+                                        └── Pass
+                                            │
+                                            ▼
+                                        RegisterModel
+                                            │ 
+                                            └── Sagemaker Model Registry -> Model Package Group
+                                                                                │
+                                                                                ▼
+
+                                                                            PendingManualApproval
+                                                                                │
+                                                                                ▼
+
+                                                                            (Approve/Reject)
+                                                                                │
+                                                                                ├── Version 1    Model Package Version
+                                                                                ├── Version 2    Model Package Version
+                                                                                ├── Version 3   ← Approved (Model Package Version)
+                                                                                └── Version 4    Model Package Version
+

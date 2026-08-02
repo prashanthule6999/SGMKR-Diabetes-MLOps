@@ -9,23 +9,13 @@ from deployment.deployment_utils import (
 from deployment.create_model import create_model
 from deployment.create_endpoint_config import create_endpoint_config
 from deployment.deploy_endpoint import create_or_update_endpoint
-
+from config import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-PROJECT_NAME = "DiabetesPrediction"
 
-MODEL_PACKAGE_GROUP_NAME = "DiabetesPredictionModel"
-
-MODEL_NAME_PREFIX = "diabetes-model"
-
-ENDPOINT_NAME = "diabetes-endpoint"
-
-INSTANCE_TYPE = "ml.t2.medium"
-
-INITIAL_INSTANCE_COUNT = 1
 
 
 def main():
@@ -102,9 +92,15 @@ def main():
             )
 
             model_name = create_model(
+                project_name=PROJECT_NAME,
                 model_package=approved_model,
                 model_name_prefix=MODEL_NAME_PREFIX,
                 execution_role=execution_role,
+            )
+
+            logger.info(
+                "Using SageMaker Model: %s",
+                model_name,
             )
 
         # --------------------------------------------------
@@ -113,6 +109,11 @@ def main():
         endpoint_config_name = (
             f"{ENDPOINT_NAME}-config-v{model_version}-"
             f"{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        )
+
+        logger.info(
+            "Endpoint configuration: %s",
+            endpoint_config_name,
         )
 
         # --------------------------------------------------
@@ -135,7 +136,15 @@ def main():
         )
 
         logger.info(
-            "Deployment completed successfully."
+            "Deployment completed successfully.\n"
+            "Model Version: %s\n"
+            "Model: %s\n"
+            "Endpoint Config: %s\n"
+            "Endpoint: %s",
+            model_version,
+            model_name,
+            endpoint_config_name,
+            ENDPOINT_NAME,
         )
 
     except Exception:

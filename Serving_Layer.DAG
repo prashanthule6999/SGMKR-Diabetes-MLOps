@@ -1,0 +1,41 @@
+                                                    User
+                                                    │
+                                                    ├── HTTP Post Request
+                                                    ▼
+                                                    FastAPI
+                                                    │
+                                                    ▼
+                                                    user_input.py(Validate incoming request using Pydantic Validation)
+                                                    │
+                                                    ▼
+                                                    app.py (API routes, metrics, health checks, request orchestration)
+                                                    │
+                                                    ▼
+                                                    predict.py (Invoke SageMaker endpoint via invoke_endpoint())
+                                                    │
+                                                    ▼
+                                                    invoke_endpoint()
+                                                    │
+                                                    ▼
+                                                    SageMaker Endpoint (Host the deployed model)
+                                                    │
+                                                    ▼
+                                                    Inference Container
+                                                    │
+                                                    ▼
+                                                    inference.py (Deserialize input, run prediction, serialize output)
+                                                    │
+                                                    ▼
+                                                    input_fn()
+                                                    │
+                                                    ▼
+                                                    predict_fn()
+                                                    │
+                                                    ▼
+                                                    output_fn()
+                                                    │
+                                                    ▼
+                                                    FastAPI
+                                                    │
+                                                    ▼
+                                                    User

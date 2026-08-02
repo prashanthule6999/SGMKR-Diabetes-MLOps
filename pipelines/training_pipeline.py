@@ -21,8 +21,10 @@ from sagemaker.model_metrics import ModelMetrics
 from sagemaker.model_metrics import MetricsSource
 from sagemaker.workflow.step_collections import RegisterModel
 
-bucket = "my-diabetes"
-raw_data_s3_uri = f"s3://{bucket}/raw"
+from sagemaker.sklearn.model import SKLearnModel
+from config import BUCKET
+
+raw_data_s3_uri = f"s3://{BUCKET}/raw"
 
 pipeline_session = PipelineSession()
 
@@ -183,11 +185,19 @@ model_metrics = ModelMetrics(
     )
 )
 
+model = SKLearnModel(
+    model_data=training_step.properties.ModelArtifacts.S3ModelArtifacts,
+    role=sagemaker.get_execution_role(),
+    entry_point="inference.py",
+    source_dir="inference",
+    framework_version="1.2-1",
+    py_version="py3",
+)
+
 register_step = RegisterModel(
 
     name="RegisterDiabetesModel",
-    estimator=estimator,
-    model_data=training_step.properties.ModelArtifacts.S3ModelArtifacts,
+    model=model,
 
     content_types=[
         "application/json"
