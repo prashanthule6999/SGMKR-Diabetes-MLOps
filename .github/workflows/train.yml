@@ -1,9 +1,9 @@
 name: SageMaker Training Pipeline
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
   workflow_dispatch:
 
