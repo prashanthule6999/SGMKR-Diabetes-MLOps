@@ -22,6 +22,9 @@ from sagemaker.model_metrics import MetricsSource
 from sagemaker.workflow.step_collections import RegisterModel
 
 from sagemaker.sklearn.model import SKLearnModel
+from config import EXECUTION_ROLE_ARN
+
+ROLE = EXECUTION_ROLE_ARN
 from config import BUCKET
 
 raw_data_s3_uri = f"s3://{BUCKET}/raw"
@@ -31,7 +34,7 @@ pipeline_session = PipelineSession()
 # defining the execution environment for processing job
 processor = SKLearnProcessor(
     framework_version="1.2-1",
-    role=sagemaker.get_execution_role(),
+    role=ROLE,
     instance_type="ml.m5.large",
     instance_count=1,
     sagemaker_session=pipeline_session
@@ -95,7 +98,7 @@ preprocessing_step = ProcessingStep(
 estimator = SKLearn(
     entry_point="training/train.py",
     framework_version="1.2-1",
-    role=sagemaker.get_execution_role(),
+    role=ROLE,
     instance_type="ml.m5.large",
     instance_count=1,
     sagemaker_session=pipeline_session,
@@ -187,7 +190,7 @@ model_metrics = ModelMetrics(
 
 model = SKLearnModel(
     model_data=training_step.properties.ModelArtifacts.S3ModelArtifacts,
-    role=sagemaker.get_execution_role(),
+    role=ROLE,
     entry_point="inference.py",
     source_dir="inference",
     framework_version="1.2-1",

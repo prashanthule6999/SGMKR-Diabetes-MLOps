@@ -1,3 +1,4 @@
+# Defines the deployment workflow
 import logging
 import sagemaker
 from datetime import datetime
@@ -13,9 +14,6 @@ from config import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-
 
 
 def main():
@@ -34,7 +32,6 @@ def main():
 
         logger.info("Starting deployment pipeline...")
 
-        execution_role = sagemaker.get_execution_role()
 
         # --------------------------------------------------
         # Retrieve latest approved model package
@@ -95,7 +92,7 @@ def main():
                 project_name=PROJECT_NAME,
                 model_package=approved_model,
                 model_name_prefix=MODEL_NAME_PREFIX,
-                execution_role=execution_role,
+                execution_role=EXECUTION_ROLE_ARN,
             )
 
             logger.info(
@@ -155,6 +152,3 @@ def main():
 
         raise
 
-
-if __name__ == "__main__":
-    main()

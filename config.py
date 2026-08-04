@@ -13,3 +13,5 @@ INSTANCE_TYPE = "ml.t2.medium"
 INITIAL_INSTANCE_COUNT = 1
 
 AWS_REGION = "us-east-1"
+
+EXECUTION_ROLE_ARN = "arn:aws:iam::<account-id>:role/<your-sagemaker-execution-role>"
