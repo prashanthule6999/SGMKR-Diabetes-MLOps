@@ -15,3 +15,11 @@ INITIAL_INSTANCE_COUNT = 1
 AWS_REGION = "us-east-1"
 
 EXECUTION_ROLE_ARN = "arn:aws:iam::<account-id>:role/<your-sagemaker-execution-role>"
+
+GITHUB_OWNER = "PrashantHule"
+
+GITHUB_REPO = "Diabetes-MLOps"
+
+WORKFLOW_FILE = "deploy.yml"
+
+BRANCH="main"
