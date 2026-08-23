@@ -13,306 +13,135 @@ The system is designed around a clear separation between the **training pipeline
 
 ---
 
-## 🚀 What This Project Demonstrates
-
-This project implements a complete ML lifecycle:
+# Architecture
 
 ```text
-                         ┌──────────────────────┐
-                         │      Raw Dataset     │
-                         │       Amazon S3      │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │   Data Processing    │
-                         │ SageMaker Processing │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │    Model Training    │
-                         │ SageMaker Training   │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │   Model Evaluation   │
-                         │ Accuracy / Precision │
-                         │ Recall / F1 / ROC-AUC│
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │    Condition Step    │
-                         │ Performance Threshold│
-                         └──────────┬───────────┘
-                                    │
-                         ┌──────────┴──────────┐
-                         │                     │
-                       PASS                  FAIL
-                         │                     │
-                         ▼                     ▼
-                ┌─────────────────┐       Pipeline
-                │  Model Registry │       Stops
-                │  Approved Model │
-                └────────┬────────┘
+                   Raw Data (S3)
                          │
                          ▼
-                 ┌───────────────┐
-                 │ deploy.yml    │
-                 └───────┬───────┘
+              SageMaker Processing Job
+          (Preprocessing / Train-Test Split)
                          │
                          ▼
-                ┌──────────────────┐
-                │ Deployment Guard │
-                └────────┬─────────┘
+              SageMaker Training Job
+             (Scikit-Learn Logistic Regression)
                          │
                          ▼
-                ┌──────────────────┐
-                │ Blue/Green       │
-                │ Canary Deployment│
-                └────────┬─────────┘
+              SageMaker Processing Job
+                 (Model Evaluation)
                          │
-                    ┌────┴────┐
-                    │         │
-                 Healthy    Failure
-                    │         │
-                    ▼         ▼
-                 100%       Rollback
-                 New Model   Old Model
-                    │
-                    ▼
-          ┌────────────────────────┐
-          │ SageMaker Real-Time    │
-          │ Endpoint               │
-          └────────────┬───────────┘
-                       │
-             ┌─────────┴──────────┐
-             │                    │
-             ▼                    ▼
-         FastAPI API         Data Capture
-                                  │
-                                  ▼
-                         ┌─────────────────┐
-                         │ Model Monitoring│
-                         └───────┬─────────┘
-                                 │
-               ┌─────────────────┼──────────────────┐
-               ▼                 ▼                  ▼
-          Data Quality       Data Drift       Model Quality
-               │                 │                  │
-               └─────────────────┼──────────────────┘
-                                 ▼
-                            CloudWatch
-                                 │
-                                 ▼
-                                SNS
-                                 │
-                                 ▼
-                              Alerts
-````
-
----
-
-# 🏗️ Architecture
-
-## High-Level Architecture
-
-```text
-                           GitHub
-                             │
-              ┌──────────────┴──────────────┐
-              │                             │
-              ▼                             ▼
-         train.yml                      deploy.yml
-              │                             │
-              ▼                             ▼
-    SageMaker Training             Latest Approved Model
-         Pipeline                          │
-              │                            ▼
-              │                    Deployment Guard
-              │                            │
-              ▼                            ▼
-        Model Registry              SageMaker Model
-              │                            │
-        Approved Model                    ▼
-              │                    Endpoint Config
-              │                            │
-              └──────────────────────► Endpoint
-                                           │
-                              ┌────────────┴────────────┐
-                              │                         │
-                              ▼                         ▼
-                           FastAPI                 Data Capture
-                              │                         │
-                              ▼                         ▼
-                           Client                    Amazon S3
-                                                        │
-                                       ┌────────────────┼───────────────┐
-                                       ▼                ▼               ▼
-                                  Data Quality      Data Drift     Model Quality
-                                       │                │               │
-                                       └────────────────┼───────────────┘
-                                                        │
-                                                        ▼
-                                                   CloudWatch
-                                                        │
-                                                        ▼
-                                                       SNS
+                         ▼
+               Evaluation Metrics
+        (accuracy, precision, recall, f1)
+                         │
+                         ▼
+                Condition Step
+           (Performance Threshold Check)
+                         │
+          ┌──────────────┴───────────────┐
+          │                              │
+       Pass                           Fail
+          │                              │
+          ▼                              ▼
+ Register Model Package             Pipeline Stops
+   (Model Registry)
+          │
+          ▼
+ Approved Model Package
+          │
+          ▼
+ Deployment Pipeline
+(Create Model → Endpoint Config → Endpoint)
+          │
+          ▼
+   SageMaker Real-Time Endpoint
+          │
+          ▼
+        FastAPI
+          │
+          ▼
+      Web / REST API
 ```
 
 ---
 
-# 🔄 MLOps Lifecycle
+# Project Features
 
-The complete lifecycle is divided into four major stages.
-
-### 1️⃣ Training
-
-```text
-S3
- ↓
-Processing
- ↓
-Training
- ↓
-Evaluation
- ↓
-Condition
- ↓
-Model Registry
-```
-
-### 2️⃣ Deployment
-
-```text
-Approved Model
- ↓
-Deployment Guard
- ↓
-SageMaker Model
- ↓
-Endpoint Configuration
- ↓
-Blue/Green Canary
- ↓
-Production Endpoint
-```
-
-### 3️⃣ Serving
-
-```text
-Client
- ↓
-FastAPI
- ↓
-Pydantic Validation
- ↓
-SageMaker Endpoint
- ↓
-Prediction
- ↓
-FastAPI Response
-```
-
-### 4️⃣ Monitoring
-
-```text
-Production Traffic
-       │
-       ▼
-  Data Capture
-       │
-       ▼
- ┌─────┼──────────────┐
- ▼     ▼              ▼
-DQ   Drift       Model Quality
- │     │              │
- └─────┼──────────────┘
-       ▼
-   CloudWatch
-       │
-       ▼
-      SNS
-       │
-       ▼
-    Alerting
-```
+* SageMaker Pipelines
+* Data preprocessing using Processing Jobs
+* Scikit-Learn training jobs
+* Automated model evaluation
+* Conditional model registration
+* SageMaker Model Registry
+* Automated endpoint deployment
+* FastAPI prediction service
+* Pydantic request validation
+* Prometheus metrics
+* Endpoint health monitoring
+* Production logging
+* AWS SDK (Boto3)
 
 ---
 
-# ☁️ AWS Services
+# Technology Stack
 
-| AWS Service                     | Purpose                                                        |
-| ------------------------------- | -------------------------------------------------------------- |
-| **Amazon S3**                   | Dataset, processed data, model artifacts and monitoring output |
-| **Amazon SageMaker Processing** | Data preprocessing and evaluation                              |
-| **Amazon SageMaker Training**   | Model training                                                 |
-| **SageMaker Pipelines**         | Training workflow orchestration                                |
-| **SageMaker Model Registry**    | Model versioning and approval                                  |
-| **SageMaker Model**             | Production inference model                                     |
-| **SageMaker Endpoint Config**   | Deployment configuration                                       |
-| **SageMaker Endpoint**          | Real-time inference                                            |
-| **SageMaker Model Monitor**     | Data and model monitoring                                      |
-| **Amazon CloudWatch**           | Metrics, alarms and deployment protection                      |
-| **Amazon SNS**                  | Monitoring notifications                                       |
+| Category       | Technology               |
+| -------------- | ------------------------ |
+| Language       | Python                   |
+| ML Framework   | Scikit-Learn             |
+| Cloud          | AWS SageMaker            |
+| Storage        | Amazon S3                |
+| Model Registry | SageMaker Model Registry |
+| Deployment     | SageMaker Endpoint       |
+| API            | FastAPI                  |
+| Validation     | Pydantic                 |
+| Monitoring     | Prometheus               |
+| AWS SDK        | boto3                    |
 
 ---
 
-# 🧠 Machine Learning Pipeline
+# Pipeline Workflow
 
-## Data Preprocessing
+## 1. Data Preprocessing
 
-A SageMaker Processing Job:
-
-* Reads raw data from S3
-* Handles missing values
-* Performs data cleaning
-* Splits data into training, validation and test sets
-* Stores processed datasets in S3
-
-```text
-Raw Data
-   │
-   ▼
 Processing Job
-   │
-   ├── train.csv
-   ├── validation.csv
-   └── test.csv
+
+* Reads dataset from Amazon S3
+* Cleans missing values
+* Splits data into
+
 ```
+Train
+Validation
+Test
+```
+
+Outputs are automatically stored in S3 by SageMaker Pipelines.
 
 ---
 
-# 🤖 Model Training
+## 2. Model Training
 
-The SageMaker Training Job:
+Training Job
 
-* Reads the training dataset
-* Trains the machine learning model
-* Generates the model artifact
-* Stores the artifact in Amazon S3
-
-Current model:
-
-```text
-Scikit-Learn Logistic Regression
-```
+* Reads Train dataset
+* Trains Logistic Regression model
+* Saves model artifacts to Amazon S3
 
 ---
 
-# 📊 Model Evaluation
+## 3. Model Evaluation
 
-The trained model is evaluated using:
+Processing Job
+
+Evaluates:
 
 * Accuracy
 * Precision
 * Recall
 * F1 Score
-* ROC-AUC
 
-Example validation thresholds:
+Produces
 
 ```text
 Accuracy  >= 0.70
@@ -329,333 +158,106 @@ evaluation.json
 
 ---
 
-# ✅ Conditional Model Registration
+## 4. Model Validation
 
-The pipeline uses a SageMaker Condition Step.
+Pipeline Condition Step
 
-```text
-                 Evaluation
-                     │
-                     ▼
-              Condition Step
-                     │
-             ┌───────┴───────┐
-             │               │
-           PASS             FAIL
-             │               │
-             ▼               ▼
-      Register Model      Pipeline Stops
+Registers model only if
+
+```
+Accuracy ≥ 0.70
+Precision ≥ 0.55
+Recall ≥ 0.80
+F1 ≥ 0.65
 ```
 
-Only models that satisfy the required performance thresholds are registered.
+Otherwise the pipeline stops.
 
 ---
 
-# 📦 Model Registry
+## 5. Model Registration
 
-Models are versioned using SageMaker Model Registry.
+Approved models are registered in
 
-Example:
-
-```text
+```
 DiabetesPredictionModel
-│
-├── Version 1
-├── Version 2
-├── Version 3
-└── Version 4
-       │
-       └── Approved
 ```
 
-The deployment pipeline only considers **Approved** model versions.
+using SageMaker Model Registry.
 
 ---
 
-# 🚀 Production Deployment
+## 6. Deployment Pipeline
 
-The deployment workflow is automated using:
+Deployment automatically
 
-```text
-deploy.yml
 ```
+Retrieve latest Approved Model
 
-The deployment process:
+↓
 
-```text
-Latest Approved Model
-        │
-        ▼
-Deployment Guard
-        │
-        ▼
-Create / Reuse SageMaker Model
-        │
-        ▼
+Create SageMaker Model
+
+↓
+
 Create Endpoint Configuration
-        │
-        ▼
+
+↓
+
 Create / Update Endpoint
+
+↓
+
+Zero downtime deployment
 ```
+
+The deployment always uses the **latest approved Model Package**, ensuring production consistency.
 
 ---
 
-# 🛡️ Deployment Guard
+# FastAPI Workflow
 
-Before deploying a model, the pipeline checks whether the production endpoint is already serving that model version.
-
-Example:
-
-```text
-Model Registry
-     │
-     ▼
-Version 3 Approved
-     │
-     ▼
-diabetes-model-v3
-     │
-     ▼
-Is Endpoint already serving v3?
-     │
- ┌───┴────┐
- │        │
-YES      NO
- │        │
- ▼        ▼
-STOP    DEPLOY
-```
-
-This prevents unnecessary redeployments.
-
----
-
-# 🔵🟢 Blue/Green Canary Deployment
-
-Production updates use a **Blue/Green deployment strategy with Canary traffic shifting**.
-
-Example:
-
-```text
-                Production Endpoint
-                       │
-                 ┌─────┴─────┐
-                 │           │
-              BLUE          GREEN
-               v1             v2
-               │              │
-              90%            10%
-                              │
-                              ▼
-                         CloudWatch
-                         Monitoring
-```
-
-If the new model remains healthy:
-
-```text
-v1 → 90%
-v2 → 10%
-
-       ↓
-
-v1 → 0%
-v2 → 100%
-```
-
-If deployment alarms are triggered:
-
-```text
-v1 → 90%
-v2 → 10%
-
-       ↓
-    Alarm
-
-       ↓
-
-Rollback
-
-       ↓
-
-v1 → 100%
-v2 → 0%
-```
-
-This provides controlled production model releases while minimizing deployment risk.
-
----
-
-# 📡 Data Capture
-
-Production inference requests and responses can be captured by the SageMaker Endpoint.
+Prediction flow
 
 ```text
 Client
-  │
-  ▼
+
+↓
+
+FastAPI
+
+↓
+
+Pydantic Validation
+
+↓
+
+predict.py
+
+↓
+
 SageMaker Endpoint
-  │
-  ├── Prediction
-  │
-  └── Data Capture
-          │
-          ▼
-          S3
-```
 
-Captured production data becomes the input for monitoring workflows.
+↓
 
----
+inference.py
 
-# 📈 Model Monitoring
+↓
 
-The project implements three major monitoring capabilities.
+Model Prediction
 
-## 1. Data Quality Monitoring
+↓
 
-Detects issues in production inference data.
+FastAPI Response
 
-Examples:
+↓
 
-* Missing values
-* Invalid values
-* Constraint violations
-* Feature quality problems
-* Distribution changes
-
-```text
-Baseline Data
-     │
-     ▼
-Constraints / Statistics
-     │
-     ▼
-Production Data
-     │
-     ▼
-Data Quality Monitoring
+Client
 ```
 
 ---
 
-## 2. Data Drift Monitoring
-
-Compares the production data distribution against the baseline distribution.
-
-```text
-Training Data
-     │
-     ▼
-Baseline Distribution
-     │
-     │ compare
-     ▼
-Production Distribution
-     │
-     ▼
-Drift Detection
-```
-
-This helps identify whether production input data is changing over time.
-
----
-
-## 3. Model Quality Monitoring
-
-Evaluates production model performance when ground-truth information becomes available.
-
-Metrics can include:
-
-```text
-Accuracy
-Precision
-Recall
-F1
-ROC-AUC
-```
-
-Conceptually:
-
-```text
-Predictions + Ground Truth
-          │
-          ▼
-   Model Quality Monitor
-          │
-          ▼
-       Metrics
-          │
-          ▼
-      CloudWatch
-```
-
----
-
-# 🚨 Monitoring & Alerting
-
-Monitoring results are integrated with CloudWatch.
-
-```text
-Model Monitor
-     │
-     ▼
-CloudWatch Metrics
-     │
-     ▼
-CloudWatch Alarm
-     │
-     ▼
-SNS Topic
-     │
-     ▼
-Email Notification
-```
-
-CloudWatch alarms are also used for deployment protection and automatic rollback.
-
----
-
-# 🌐 FastAPI Inference Layer
-
-FastAPI provides an application-facing REST API.
-
-```text
-                 Client
-                   │
-                   ▼
-                FastAPI
-                   │
-                   ▼
-          Pydantic Validation
-                   │
-                   ▼
-             predict.py
-                   │
-                   ▼
-          SageMaker Endpoint
-                   │
-                   ▼
-              Prediction
-                   │
-                   ▼
-              FastAPI
-                   │
-                   ▼
-                Client
-```
-
-FastAPI is intentionally kept separate from the SageMaker inference infrastructure.
-
----
-
-# 🧪 API Example
-
-## Prediction Request
-
-```http
-POST /predict
-```
+# Request Example
 
 ```json
 {
@@ -670,28 +272,46 @@ POST /predict
 }
 ```
 
-## Response
+---
+
+# Response Example
 
 ```json
 {
-    "prediction": 1,
-    "confidence": 0.84,
-    "class_probabilities": {
-        "No Diabetes": 0.16,
-        "Diabetes": 0.84
-    }
+  "prediction": 1,
+  "confidence": 0.84,
+  "class_probabilities": {
+    "No Diabetes": 0.16,
+    "Diabetes": 0.84
+  }
 }
 ```
 
 ---
 
-# ❤️ Health Check
+# Monitoring
 
-```http
+The FastAPI application exposes Prometheus metrics.
+
+Collected metrics include
+
+* Prediction Requests
+* Successful Predictions
+* Failed Predictions
+* Prediction Distribution
+* Prediction Latency
+* Endpoint Health
+* Connected Endpoint Information
+
+---
+
+# Health Endpoint
+
+```
 GET /health
 ```
 
-Example:
+Returns
 
 ```json
 {
@@ -703,60 +323,25 @@ Example:
 
 ---
 
-# 📊 FastAPI Metrics
+# Prediction Endpoint
 
-The FastAPI application exposes Prometheus metrics.
-
-Tracked metrics include:
-
-* Prediction requests
-* Successful predictions
-* Failed predictions
-* Prediction distribution
-* Prediction latency
-* Endpoint health
-* Connected endpoint information
-
----
-
-# 🔁 CI/CD
-
-GitHub Actions automates the training and deployment workflows.
-
-## Training
-
-```text
-Git Push
-   │
-   ▼
-train.yml
-   │
-   ▼
-SageMaker Pipeline
-   │
-   ▼
-Evaluation
-   │
-   ▼
-Model Registry
+```
+POST /predict
 ```
 
-## Deployment
+Request
 
-```text
-Approved Model
-      │
-      ▼
-deploy.yml
-      │
-      ▼
-Deployment Guard
-      │
-      ▼
-Blue/Green Canary
-      │
-      ▼
-Production Endpoint
+```json
+{
+    "pregnancies":6,
+    "glucose":148,
+    "blood_pressure":72,
+    "skin_thickness":35,
+    "insulin":1,
+    "bmi":33.6,
+    "diabetes_pedigree_function":0.627,
+    "age":50
+}
 ```
 
 ---
@@ -765,20 +350,20 @@ Production Endpoint
 
 ```text
 project/
-│
+
 ├── pipelines/
 │   ├── training_pipeline.py
-│   └── deployment_pipeline.py
+│   ├── deployment_pipeline.py
 │
 ├── processing/
 │   ├── preprocessing.py
-│   └── evaluate.py
+│   ├── evaluate.py
 │
 ├── training/
-│   └── train.py
+│   ├── train.py
 │
 ├── inference/
-│   └── inference.py
+│   ├── inference.py
 │
 ├── deployment/
 │   ├── create_model.py
@@ -787,255 +372,56 @@ project/
 │   ├── retrieve_model.py
 │   └── deployment_utils.py
 │
-├── monitoring/
-│   ├── create_baseline.py
-│   ├── create_monitor_schedule.py
-│   ├── generate_test_traffic.py
-│   └── inspect_monitoring.py
-│
 ├── fastapp/
+│   ├── schema/
+│   ├── static/
+│   ├── templates/
 │   ├── app.py
 │   ├── predict.py
 │   ├── metrics.py
 │   ├── schema/
 │   ├── templates/
-│   └── static/
+│   ├── static/
 │
 ├── config.py
-│
-├── train.yml
-├── deploy.yml
-└── README.md
 ```
 
 ---
 
-# 🧩 Key Design Principles
+# Learning Outcomes
 
-### Separation of Responsibilities
+This project demonstrates practical experience with
 
-```text
-Training Pipeline
-       │
-       ▼
-Model Registry
-       │
-       ▼
-Deployment Pipeline
-       │
-       ▼
-Production Endpoint
-       │
-       ▼
-Monitoring
-```
-
-Each stage has a clear responsibility.
-
-### Immutable Deployment Configuration
-
-Every model version receives a new SageMaker Endpoint Configuration.
-
-```text
-Model v1
-   ↓
-Endpoint Config v1
-
-Model v2
-   ↓
-Endpoint Config v2
-
-Model v3
-   ↓
-Endpoint Config v3
-```
-
-### Version-Specific Models
-
-```text
-diabetes-model-v1
-diabetes-model-v2
-diabetes-model-v3
-```
-
-This makes deployment state explicit and enables the deployment guard.
-
----
-
-# 🛠️ Current Implementation
-
-| Capability               |       Status      |
-| ------------------------ | :---------------: |
-| Data Processing          |         ✅         |
-| SageMaker Training       |         ✅         |
-| Model Evaluation         |         ✅         |
-| Conditional Validation   |         ✅         |
-| Model Registry           |         ✅         |
-| Model Approval           |         ✅         |
-| Automated Deployment     |         ✅         |
-| Deployment Guard         |         ✅         |
-| Blue/Green Deployment    |         ✅         |
-| Canary Deployment        |         ✅         |
-| Automatic Rollback       |         ✅         |
-| Data Capture             |         ✅         |
-| Data Quality Monitoring  |         ✅         |
-| Data Drift Monitoring    |         ✅         |
-| Model Quality Monitoring |         ✅         |
-| CloudWatch               |         ✅         |
-| SNS Alerting             |         ✅         |
-| FastAPI                  |         ✅         |
-| Prometheus Metrics       |         ✅         |
-| GitHub Actions CI/CD     |         ✅         |
-| Automated Retraining     | ⏳ Not implemented |
-
----
-
-# 🎯 Learning Outcomes
-
-This project provides hands-on experience with:
-
-* Production ML architecture
-* AWS SageMaker
+* SageMaker Processing Jobs
+* SageMaker Training Jobs
 * SageMaker Pipelines
-* SageMaker Processing
-* SageMaker Training
-* SageMaker Model Registry
-* Model approval workflows
-* Real-time model serving
-* Blue/Green deployment
-* Canary releases
-* Deployment guardrails
-* Automatic rollback
-* Data quality monitoring
-* Data drift detection
-* Model quality monitoring
-* CloudWatch
-* SNS
-* FastAPI
-* Prometheus
-* GitHub Actions
-* Boto3
-* Production ML system design
+* Condition Steps
+* Property Files
+* Model Metrics
+* Model Registry
+* Model Packages
+* SageMaker Models
+* Endpoint Configurations
+* Real-Time Endpoints
+* Automated Deployment
+* FastAPI Integration
+* Boto3 SDK
+* Prometheus Monitoring
+* Production-ready ML Inference
 
 ---
 
-# 🔮 Future Improvements
+# Future Improvements
 
-The current implementation focuses on the core production MLOps lifecycle.
-
-Potential future enhancements:
-
-* Automated model retraining
-* Infrastructure as Code
-* SageMaker Auto Scaling
-* API Gateway
-* Authentication and authorization
-* CloudWatch dashboards
-* Model explainability
-* Bias and fairness monitoring
-* Shadow deployments
-* A/B testing
-* Advanced cost optimization
+* CI/CD using GitHub Actions
+* Infrastructure as Code (Terraform or CloudFormation)
+* Model Monitoring
+* Data Quality Monitoring
+* Drift Detection
+* Blue/Green Deployment
+* Auto Scaling
+* Authentication with API Gateway
+* CloudWatch Dashboards
+* Canary Deployments
 
 ---
-
-# 🏁 End-to-End Production Flow
-
-```text
-                         ┌───────────────┐
-                         │   GitHub      │
-                         └───────┬───────┘
-                                 │
-                         ┌───────▼───────┐
-                         │   train.yml   │
-                         └───────┬───────┘
-                                 │
-                                 ▼
-                        SageMaker Pipeline
-                                 │
-                    ┌────────────┴────────────┐
-                    │                         │
-                    ▼                         ▼
-               Processing                 Training
-                    │                         │
-                    └────────────┬────────────┘
-                                 ▼
-                            Evaluation
-                                 │
-                                 ▼
-                            Validation
-                                 │
-                         ┌───────┴───────┐
-                         │               │
-                       PASS             FAIL
-                         │               │
-                         ▼               ▼
-                  Model Registry      Pipeline Stop
-                         │
-                         ▼
-                  Approved Model
-                         │
-                         ▼
-                    deploy.yml
-                         │
-                         ▼
-                 Deployment Guard
-                         │
-                         ▼
-               Blue/Green Canary
-                         │
-                    ┌────┴────┐
-                    │         │
-                 Healthy    Failure
-                    │         │
-                    ▼         ▼
-                 100%       Rollback
-                    │
-                    ▼
-             SageMaker Endpoint
-                    │
-          ┌─────────┴─────────┐
-          │                   │
-          ▼                   ▼
-       FastAPI            Data Capture
-          │                   │
-          ▼                   ▼
-       Clients           Model Monitor
-                              │
-                    ┌─────────┼─────────┐
-                    ▼         ▼         ▼
-                Data Quality Drift  Model Quality
-                    │         │         │
-                    └─────────┼─────────┘
-                              ▼
-                         CloudWatch
-                              │
-                              ▼
-                             SNS
-                              │
-                              ▼
-                           Alert
-```
-
----
-
-## ⭐ Summary
-
-This project demonstrates a complete production-oriented MLOps lifecycle:
-
-**Train → Evaluate → Register → Approve → Deploy → Canary → Monitor → Alert**
-
-The architecture intentionally does **not** include automated retraining yet. Retraining can be introduced later as a response to monitoring signals once the monitoring and deployment workflows are stable.
-
-```
-
-### My recommendation
-
-For your GitHub repository, this version is much stronger than the old README because it shows that your project has moved beyond simply **"train a model and deploy an endpoint."**
-
-Your key story is now:
-
-> **I built a production-oriented ML system on AWS SageMaker with model governance, controlled deployments, deployment rollback, continuous monitoring, and CI/CD.**
-
-That's the story I'd also use when explaining this project in an **MLOps interview**.
-```
