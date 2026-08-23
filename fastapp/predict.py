@@ -6,6 +6,7 @@
 import json
 import logging
 import boto3
+import uuid
 
 from botocore.config import Config
 from botocore.exceptions import ClientError
@@ -36,47 +37,90 @@ sm_client = boto3.client(
     config=config,
 )
 
-
 def predict_output(user_input: dict) -> dict:
 
     try:
 
+        # --------------------------------------------------
+        # Generate unique ID for this inference
+        # --------------------------------------------------
+
+        inference_id = str(uuid.uuid4())
+
+
+        # --------------------------------------------------
+        # Invoke SageMaker Endpoint
+        # --------------------------------------------------
+
         response = runtime.invoke_endpoint(
+
             EndpointName=ENDPOINT_NAME,
+
             ContentType="application/json",
+
             Body=json.dumps(user_input),
+
+            InferenceId=inference_id,
         )
 
-        status_code = response["ResponseMetadata"]["HTTPStatusCode"]
+
+        status_code = (
+            response["ResponseMetadata"]["HTTPStatusCode"]
+        )
+
 
         if status_code != 200:
+
             raise RuntimeError(
-                f"SageMaker invocation failed with HTTP {status_code}"
+                f"SageMaker invocation failed "
+                f"with HTTP {status_code}"
             )
+
 
         result = json.loads(
             response["Body"].read().decode("utf-8")
         )
 
-        logger.info("Prediction successful.")
 
-        return result
+        logger.info(
+            "Prediction successful. "
+            "InferenceId=%s",
+            inference_id,
+        )
+
+
+        # --------------------------------------------------
+        # Return prediction + inference ID
+        # --------------------------------------------------
+
+        return {
+
+            "prediction": result.get(
+                "prediction"
+            ),
+
+            "inference_id": inference_id,
+
+        }
+
 
     except ClientError:
 
         logger.exception(
             "AWS SageMaker invocation failed."
         )
+
         raise
+
 
     except Exception:
 
         logger.exception(
             "Prediction failed."
         )
+
         raise
-
-
+    
 def check_endpoint(endpoint_name: str) -> str:
 
     try:

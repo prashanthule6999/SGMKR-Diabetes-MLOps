@@ -1,0 +1,55 @@
+┌─────────────────────────────────────────────────────────────┐
+│                    TRAINING PIPELINE                        │
+│                                                             │
+│ Data → Preprocess → Train → Evaluate → Register → Approve  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+                        Deploy Model
+                               │
+                               ▼
+                      SageMaker Endpoint
+                               │
+                               ▼
+                    ┌────────────────────┐
+                    │    MONITORING      │
+                    └─────────┬──────────┘
+                              │
+              ┌───────────────┼────────────────┐
+              ▼               ▼                ▼
+         Data Quality     Data Drift      Model Quality
+              │               │                │
+              └───────────────┼────────────────┘
+                              ▼
+                         CloudWatch
+                              │
+                       ┌──────┴──────┐
+                       │             │
+                    Healthy       Violation
+                       │             │
+                       ▼             ▼
+                    Continue       Alert
+                                     │
+                                     ▼
+                              Investigation
+                                     │
+                              ┌──────┴──────┐
+                              │             │
+                           No retrain     Retrain
+                                            │
+                                            ▼
+                                   Training Pipeline
+                                            │
+                                            ▼
+                                      New Model
+                                            │
+                                            ▼
+                                    Model Registry
+                                            │
+                                            ▼
+                                         Approve
+                                            │
+                                            ▼
+                                      Deployment
+                                            │
+                                            └──────► Endpoint

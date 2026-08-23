@@ -13,7 +13,18 @@ Responsibilities
 import boto3
 import logging
 from botocore.exceptions import ClientError
+
 from deployment.deployment_utils import endpoint_exists
+
+from config import (
+    DEPLOYMENT_STRATEGY,
+    CANARY_SIZE_PERCENT,
+    CANARY_WAIT_INTERVAL_SECONDS,
+    TERMINATION_WAIT_SECONDS,
+    MAXIMUM_EXECUTION_TIMEOUT_SECONDS,
+    DEPLOYMENT_ROLLBACK_ALARM_NAME,
+    ENABLE_AUTO_ROLLBACK,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,38 +39,66 @@ def create_or_update_endpoint(
     """
     Create or update a SageMaker Endpoint.
 
-    If the endpoint already exists it is updated to use the
-    supplied Endpoint Configuration. Otherwise a new endpoint
-    is created.
+    New endpoint:
+        Creates the endpoint normally.
 
-    Args:
-        endpoint_name:
-            SageMaker Endpoint name.
-
-        endpoint_config_name:
-            Endpoint Configuration to deploy.
+    Existing endpoint:
+        Performs a Blue/Green Canary deployment.
     """
 
     try:
 
+        # ==================================================
+        # Existing Endpoint
+        # ==================================================
+
         if endpoint_exists(endpoint_name):
 
             logger.info(
-                "Updating endpoint '%s' using Endpoint Configuration '%s'.",
+                "Endpoint '%s' already exists.",
                 endpoint_name,
+            )
+
+            deployment_config = (
+                build_deployment_config()
+            )
+
+            logger.info(
+                "Starting %s deployment for endpoint '%s'.",
+                DEPLOYMENT_STRATEGY,
+                endpoint_name,
+            )
+
+            logger.info(
+                "New Endpoint Configuration: %s",
                 endpoint_config_name,
+            )
+
+            logger.info(
+                "Deployment configuration: %s",
+                deployment_config,
             )
 
             sm_client.update_endpoint(
                 EndpointName=endpoint_name,
                 EndpointConfigName=endpoint_config_name,
+                DeploymentConfig=deployment_config,
             )
+
+        # ==================================================
+        # New Endpoint
+        # ==================================================
 
         else:
 
             logger.info(
-                "Creating endpoint '%s' using Endpoint Configuration '%s'.",
+                "Endpoint '%s' does not exist.",
                 endpoint_name,
+            )
+
+            logger.info(
+                "Creating endpoint using Endpoint "
+                "Configuration '%s'.",
                 endpoint_config_name,
             )
 
@@ -68,8 +107,13 @@ def create_or_update_endpoint(
                 EndpointConfigName=endpoint_config_name,
             )
 
+        # ==================================================
+        # Wait for deployment
+        # ==================================================
+
         logger.info(
-            "Waiting for endpoint '%s' to reach InService status...",
+            "Waiting for endpoint '%s' to reach "
+            "InService status...",
             endpoint_name,
         )
 
@@ -98,3 +142,71 @@ def create_or_update_endpoint(
         )
 
         raise
+
+    def build_deployment_config() -> dict:
+        """
+        Build SageMaker Blue/Green deployment configuration.
+
+        Current strategy:
+            CANARY
+
+        The configuration is intentionally kept separate from
+        the endpoint update logic so deployment.py remains clean.
+        """
+
+        if DEPLOYMENT_STRATEGY != "CANARY":
+            raise ValueError(
+                f"Unsupported deployment strategy: "
+                f"{DEPLOYMENT_STRATEGY}"
+            )
+
+        deployment_config = {
+            "BlueGreenUpdatePolicy": {
+                "TrafficRoutingConfiguration": {
+                    "Type": "CANARY",
+
+                    "CanarySize": {
+                        "Type": "CAPACITY_PERCENT",
+                        "Value": CANARY_SIZE_PERCENT,
+                    },
+
+                    "WaitIntervalInSeconds": (
+                        CANARY_WAIT_INTERVAL_SECONDS
+                    ),
+                },
+
+                "TerminationWaitInSeconds": (
+                    TERMINATION_WAIT_SECONDS
+                ),
+
+                "MaximumExecutionTimeoutInSeconds": (
+                    MAXIMUM_EXECUTION_TIMEOUT_SECONDS
+                ),
+            }
+        }
+
+        # --------------------------------------------------
+        # Automatic rollback
+        # --------------------------------------------------
+
+        if ENABLE_AUTO_ROLLBACK:
+
+            if not DEPLOYMENT_ROLLBACK_ALARM_NAME:
+                raise ValueError(
+                    "ENABLE_AUTO_ROLLBACK is True but "
+                    "DEPLOYMENT_ROLLBACK_ALARM_NAME is empty."
+                )
+
+            deployment_config[
+                "AutoRollbackConfiguration"
+            ] = {
+                "Alarms": [
+                    {
+                        "AlarmName": (
+                            DEPLOYMENT_ROLLBACK_ALARM_NAME
+                        )
+                    }
+                ]
+            }
+
+        return deployment_config

@@ -1,0 +1,52 @@
+                    TRAINING
+                       │
+                       ▼
+                 Model Registry
+                       │
+                 Approved Model
+                       │
+                       ▼
+                deploy.yml
+                       │
+                       ▼
+              Deployment Guard
+                       │
+             ┌─────────┴─────────┐
+             │                   │
+       Already deployed      New version
+             │                   │
+            STOP                 ▼
+                         SageMaker Model
+                               │
+                               ▼
+                     Endpoint Configuration
+                               │
+                               ▼
+                    Blue/Green + Canary
+                               │
+                         v2 → 10%
+                               │
+                               ▼
+                         CloudWatch
+                         /          \
+                    Healthy        Alarm
+                       │              │
+                       ▼              ▼
+                  v2 → 100%       Rollback → v1
+                       │
+                       ▼
+                    PRODUCTION
+                       │
+                       ▼
+                  Data Capture
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+     Data Quality   Data Drift   Model Quality
+          │            │            │
+          └────────────┼────────────┘
+                       ▼
+                  CloudWatch
+                       │
+                       ▼
+                    SNS Alert

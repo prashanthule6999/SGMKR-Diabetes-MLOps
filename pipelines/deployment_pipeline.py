@@ -1,16 +1,28 @@
 # Defines the deployment workflow
 import logging
-import sagemaker
 from datetime import datetime
+
 from deployment.retrieve_model import get_latest_approved_model
+
 from deployment.deployment_utils import (
     model_exists,
     endpoint_already_serving_model,
 )
+
 from deployment.create_model import create_model
 from deployment.create_endpoint_config import create_endpoint_config
 from deployment.deploy_endpoint import create_or_update_endpoint
-from config import *
+
+from config import (
+    MODEL_PACKAGE_GROUP_NAME,
+    MODEL_NAME_PREFIX,
+    ENDPOINT_NAME,
+    PROJECT_NAME,
+    EXECUTION_ROLE_ARN,
+    INSTANCE_TYPE,
+    INITIAL_INSTANCE_COUNT,
+    PRODUCTION_MONITORING_DATA_S3_URI,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,17 +33,19 @@ def main():
     Deployment Workflow
 
     1. Retrieve latest approved Model Package.
-    2. Build desired SageMaker Model name.
+    2. Build version-specific SageMaker Model name.
     3. Check whether endpoint already serves that model.
-    4. Create SageMaker Model only if it doesn't exist.
-    5. Create a new Endpoint Configuration.
-    6. Create or update the Endpoint.
+    4. Stop if the desired model is already deployed.
+    5. Create or reuse the SageMaker Model.
+    6. Create a new immutable Endpoint Configuration.
+    7. Create or update the Endpoint.
+    8. Existing endpoint → Blue/Green Canary deployment.
+    9. New endpoint → normal creation.
     """
 
     try:
 
         logger.info("Starting deployment pipeline...")
-
 
         # --------------------------------------------------
         # Retrieve latest approved model package
@@ -122,6 +136,7 @@ def main():
             model_name=model_name,
             instance_type=INSTANCE_TYPE,
             initial_instance_count=INITIAL_INSTANCE_COUNT,
+            data_capture_s3_uri=PRODUCTION_MONITORING_DATA_S3_URI
         )
 
         # --------------------------------------------------
@@ -151,4 +166,3 @@ def main():
         )
 
         raise
-
