@@ -143,7 +143,7 @@ def create_or_update_endpoint(
 
         raise
 
-    def build_deployment_config() -> dict:
+def build_deployment_config() -> dict:
         """
         Build SageMaker Blue/Green deployment configuration.
 
